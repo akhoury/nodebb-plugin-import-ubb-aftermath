@@ -1,9 +1,12 @@
 var $ = require('cheerio'),
 	path = require('path'),
+	path = require('path'),
 	fs = require('fs-extra'),
 	async = require('async'),
 	htmlMd = require('html-md'),
 	User, Posts, db, nconf;
+
+var postsStartAt = 5601;
 
 // todo: this is such a bummer !!!
 console.log('in order to require any NodeBB Object, nconf.get(\'database\') needs to be set');
@@ -134,22 +137,29 @@ var emotionsMap = {
 		var t0 = +new Date();
 
 		db.keys('post:*', function(err, keys) {
+			var count = 1;
 			async.eachLimit(keys, 1, function(key, next) {
-				db.getObjectFields(key, ['content'], function(err, data) {
-					if(err) {
-						return next(err);
-					}
 
-					console.log('[before' + key + ']');
-					console.log(data.content);
-					data.content = cleanPostContent(data.content || '');
+				if (count >= postsStartAt) {
 
-					db.setObjectField(key, 'content', data.content, function(){
-						console.log('[after' + key + ']');
-						console.log(data.content);
-						next();
+					db.getObjectFields(key, ['content'], function(err, data) {
+						if(err) {
+							return next(err);
+						}
+
+						data.content = cleanPostContent(data.content || '');
+
+						db.setObjectField(key, 'content', data.content, function(){
+							console.log('count at ' + count++);
+							next();
+						});
 					});
-				});
+
+				} else {
+					console.log('skipping ' + key);
+					count++;
+					next();
+				}
 
 			}, function(err) {
 				console.log('cleanPostsContent took: ' + ((+new Date() - t0) / 1000 / 60).toFixed(2) + ' minutes');
