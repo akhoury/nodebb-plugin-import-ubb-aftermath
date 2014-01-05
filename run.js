@@ -1,12 +1,11 @@
 var $ = require('cheerio'),
 	path = require('path'),
-	path = require('path'),
 	fs = require('fs-extra'),
 	async = require('async'),
 	htmlMd = require('html-md'),
 	User, Posts, db, nconf;
 
-var postsStartAt = 16397;
+var postsStartAt = 21877;
 
 // todo: this is such a bummer !!!
 console.log('in order to require any NodeBB Object, nconf.get(\'database\') needs to be set');
@@ -102,26 +101,12 @@ var emotionsMap = {
 	cleanUsers = function(done){
 		console.log('cleanUsers started');
 		var t0 = +new Date();
-
 		db.getObjectValues('username:uid', function(err, uids) {
 			async.each(uids, function(uid, next) {
-				User.getUserField(uid, 'birthday', function(err, birthday) {
-					if(err) {
-						setTimeout(function(){next();}, 1);
-					} else {
-						birthday = parseInt(birthday, 10);
-						if(birthday === 0) {
-							console.log('cleaning user:' + uid);
-							User.setUserField(uid, 'birthday', '', function(){
-								// todo [async-going-sync-hack]
-								setTimeout(function(){next();}, 1);
-							});
-						} else {
-							console.log('skipping user:' + uid);
-							// todo [async-going-sync-hack]
-							setTimeout(function(){next();}, 1);
-						}
-					}
+				console.log('cleaning user:' + uid);
+				User.setUserField(uid, 'birthday', '', function(){
+					// todo [async-going-sync-hack]
+					setTimeout(function(){next();}, 1);
 				});
 			}, function(err) {
 				console.log('cleanUsers took: ' + ((+new Date() - t0) / 1000 / 60).toFixed(2) + ' minutes');
