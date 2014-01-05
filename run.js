@@ -134,19 +134,21 @@ var emotionsMap = {
 		var t0 = +new Date();
 
 		db.keys('post:*', function(err, keys) {
-			async.eachLimit(keys, 2, function(key, next) {
+			async.eachLimit(keys, 1, function(key, next) {
 				db.getObjectFields(key, ['content'], function(err, data) {
 					if(err) {
 						return next(err);
 					}
+
 					console.log('[before' + key + ']');
 					console.log(data.content);
-					console.log('[after' + key + ']');
 					data.content = cleanPostContent(data.content || '');
-					console.log(data.content);
-					next();
 
-					// db.setObjectField(key, 'content', data.content, next);
+					db.setObjectField(key, 'content', data.content, function(){
+						console.log('[after' + key + ']');
+						console.log(data.content);
+						next();
+					});
 				});
 
 			}, function(err) {
