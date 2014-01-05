@@ -108,8 +108,10 @@ var emotionsMap = {
 					}
 					birthday = parseInt(birthday, 10);
 					if(birthday === 0) {
+						console.log('cleaning user:' + uid);
 						User.setUserField(uid, 'birthday', '', next);
 					} else {
+						console.log('skipping user:' + uid);
 						next();
 					}
 				});
@@ -132,13 +134,19 @@ var emotionsMap = {
 		var t0 = +new Date();
 
 		db.keys('post:*', function(err, keys) {
-			async.eachLimit(keys, 5, function(key, next) {
+			async.eachLimit(keys, 2, function(key, next) {
 				db.getObjectFields(key, ['content'], function(err, data) {
 					if(err) {
 						return next(err);
 					}
+					console.log('[before' + key + ']');
+					console.log(data.content);
+					console.log('[after' + key + ']');
 					data.content = cleanPostContent(data.content || '');
-					db.setObjectField(key, 'content', data.content, next);
+					console.log(data.content);
+					next();
+
+					// db.setObjectField(key, 'content', data.content, next);
 				});
 
 			}, function(err) {
