@@ -1,11 +1,12 @@
 var $ = require('cheerio'),
 	path = require('path'),
+	argv = require('optimist').argv,
 	fs = require('fs-extra'),
 	async = require('async'),
 	htmlMd = require('html-md'),
 	User, Posts, db, nconf;
 
-var postsStartAt = 21877;
+var postsStartAt = parseInt(argv.psa || argv['posts-start-at'] || '0', 10);
 
 // todo: this is such a bummer !!!
 console.log('in order to require any NodeBB Object, nconf.get(\'database\') needs to be set');
