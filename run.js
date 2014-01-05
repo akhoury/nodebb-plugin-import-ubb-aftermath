@@ -107,15 +107,20 @@ var emotionsMap = {
 			async.each(uids, function(uid, next) {
 				User.getUserField(uid, 'birthday', function(err, birthday) {
 					if(err) {
-						return next(err);
-					}
-					birthday = parseInt(birthday, 10);
-					if(birthday === 0) {
-						console.log('cleaning user:' + uid);
-						User.setUserField(uid, 'birthday', '', next);
+						setTimeout(function(){next();}, 1);
 					} else {
-						console.log('skipping user:' + uid);
-						next();
+						birthday = parseInt(birthday, 10);
+						if(birthday === 0) {
+							console.log('cleaning user:' + uid);
+							User.setUserField(uid, 'birthday', '', function(){
+								// todo [async-going-sync-hack]
+								setTimeout(function(){next();}, 1);
+							});
+						} else {
+							console.log('skipping user:' + uid);
+							// todo [async-going-sync-hack]
+							setTimeout(function(){next();}, 1);
+						}
 					}
 				});
 			}, function(err) {
@@ -138,29 +143,24 @@ var emotionsMap = {
 
 		db.keys('post:*', function(err, keys) {
 			var count = 1;
-			async.eachLimit(keys, 1, function(key, next) {
-
+			async.eachSeries(keys, 1, function(key, next) {
 				if (count >= postsStartAt) {
-
 					db.getObjectFields(key, ['content'], function(err, data) {
 						if(err) {
-							return next(err);
+							setTimeout(function(){next();}, 1);
+						} else {
+							data.content = cleanPostContent(data.content || '');
+							db.setObjectField(key, 'content', data.content, function(){
+								console.log('count at ' + count++);
+								setTimeout(function(){next();}, 1);
+							});
 						}
-
-						data.content = cleanPostContent(data.content || '');
-
-						db.setObjectField(key, 'content', data.content, function(){
-							console.log('count at ' + count++);
-							next();
-						});
 					});
-
 				} else {
 					console.log('skipping ' + key);
 					count++;
-					next();
+					setTimeout(function(){next();}, 1);
 				}
-
 			}, function(err) {
 				console.log('cleanPostsContent took: ' + ((+new Date() - t0) / 1000 / 60).toFixed(2) + ' minutes');
 				done(err);
