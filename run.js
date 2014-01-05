@@ -6,7 +6,7 @@ var $ = require('cheerio'),
 	htmlMd = require('html-md'),
 	User, Posts, db, nconf;
 
-var postsStartAt = 5601;
+var postsStartAt = 16397;
 
 // todo: this is such a bummer !!!
 console.log('in order to require any NodeBB Object, nconf.get(\'database\') needs to be set');
@@ -143,7 +143,7 @@ var emotionsMap = {
 
 		db.keys('post:*', function(err, keys) {
 			var count = 1;
-			async.eachSeries(keys, 1, function(key, next) {
+			async.eachLimit(keys, 1, function(key, next) {
 				if (count >= postsStartAt) {
 					db.getObjectFields(key, ['content'], function(err, data) {
 						if(err) {
