@@ -3,10 +3,20 @@ var $ = require('cheerio'),
 	argv = require('optimist').argv,
 	fs = require('fs-extra'),
 	async = require('async'),
-	htmlMd = require('html-md'),
 	User, Posts, db, nconf;
 
-var postsStartAt = parseInt(argv.psa || argv['posts-start-at'] || '0', 10);
+var doc = require('jsdom').jsdom(null, null, {
+	features: {
+		FetchExternalResources: false
+	},
+	url: "file://" + (process.cwd())
+});
+
+var win = doc.createWindow();
+
+var htmlMd = require('html-md');
+
+var postsStartAt = parseInt(argv['posts-start-at'] || '0', 10);
 
 // todo: this is such a bummer !!!
 console.log('in order to require any NodeBB Object, nconf.get(\'database\') needs to be set');
@@ -105,9 +115,14 @@ var emotionsMap = {
 		db.getObjectValues('username:uid', function(err, uids) {
 			async.each(uids, function(uid, next) {
 				console.log('cleaning user:' + uid);
-				User.setUserField(uid, 'birthday', '', function(){
-					// todo [async-going-sync-hack]
-					setTimeout(function(){next();}, 1);
+				User.getUserField(uid, 'signature', function(err, signature) {
+					if(err) {
+						return next(err);
+					}
+					User.setUserFields(uid, {signature: htmlMd(signature, {window: win}), birthday: ''}, function(){
+						// todo [async-going-sync-hack]
+						setTimeout(function(){next();}, 1);
+					});
 				});
 			}, function(err) {
 				console.log('cleanUsers took: ' + ((+new Date() - t0) / 1000 / 60).toFixed(2) + ' minutes');
@@ -119,8 +134,7 @@ var emotionsMap = {
 	cleanPostContent = function(content) {
 		content = content.replace('img src="/ubbthreads/images', 'img src="http://www.afraidtoask.com./forums/images');
 		content = imagesToEmoji(content);
-		return htmlMd(content) || '';
-
+		return htmlMd(content, {window: win}) || '';
 	},
 
 	cleanPostsContent = function(done){
@@ -128,7 +142,19 @@ var emotionsMap = {
 		var t0 = +new Date();
 
 		db.keys('post:*', function(err, keys) {
-			var count = 1;
+			var count = 1, _count = 1 ;
+
+			var fuckthishit = function(){
+				_count++;
+				if (_count % 1000 == 0) {
+					htmlMd = 0;
+					global.gc();
+					htmlMd = require('html-md');
+
+					console.log('----------- new html-md required');
+				}
+			};
+
 			async.eachLimit(keys, 1, function(key, next) {
 				if (count >= postsStartAt) {
 					db.getObjectFields(key, ['content'], function(err, data) {
@@ -138,14 +164,14 @@ var emotionsMap = {
 							data.content = cleanPostContent(data.content || '');
 							db.setObjectField(key, 'content', data.content, function(){
 								console.log('count at ' + count++);
-								setTimeout(function(){next();}, 1);
+								setTimeout(function(){fuckthishit();next();}, 1);
 							});
 						}
 					});
 				} else {
-					console.log('skipping ' + key);
+					console.log('skipping ' + key + ' count at: ' + count);
 					count++;
-					setTimeout(function(){next();}, 1);
+					setTimeout(function(){fuckthishit();next();}, 1);
 				}
 			}, function(err) {
 				console.log('cleanPostsContent took: ' + ((+new Date() - t0) / 1000 / 60).toFixed(2) + ' minutes');
@@ -156,8 +182,8 @@ var emotionsMap = {
 
 console.log('starting..');
 async.series([
-	cleanUsers,
-	cleanPostsContent
+	cleanUsers
+	// cleanPostsContent
 ],
 	function(err){
 		if (err) throw err;
